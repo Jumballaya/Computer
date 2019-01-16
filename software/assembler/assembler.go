@@ -1,20 +1,14 @@
 package assembler
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func Compile(source string) {
 	l := newLexer(source)
+	p := newParser(l)
 
-	tok := l.NextToken()
+	out := p.parseProgram()
 
-	for tok.Type != EOF {
-		fmt.Println(fmt.Sprintf("%v", tok))
-		tok = l.NextToken()
-
-		if tok.Type == ILLEGAL {
-			fmt.Println(fmt.Sprintf("Illegal -- %v", tok))
-			break
-		}
-	}
-
+	fmt.Printf("%v\n", out)
 }

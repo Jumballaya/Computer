@@ -39,6 +39,12 @@ func (l *lexer) NextToken() token {
 		tok = token{Type: PLUS, Literal: string(l.ch)}
 	case ';':
 		tok = token{Type: SEMICOLON, Literal: string(l.ch)}
+	case '!':
+		tok = token{Type: BANG, Literal: string(l.ch)}
+	case '&':
+		tok = token{Type: AMPERSAND, Literal: string(l.ch)}
+	case '|':
+		tok = token{Type: PIPE, Literal: string(l.ch)}
 	case '(':
 		tok = token{Type: LPAREN, Literal: string(l.ch)}
 	case ')':
