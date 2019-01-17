@@ -1,9 +1,3 @@
-/**
- *
- * Multi-line Comments
- *
- */
-
 // Single line comment
 
 @0

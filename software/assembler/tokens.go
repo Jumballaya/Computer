@@ -10,6 +10,7 @@ type token struct {
 const (
 	ILLEGAL   = "ILLEGAL"
 	EOF       = "EOF"
+	NEWLINE   = "NEWLINE"
 	SYMBOL    = "SYMBOL"
 	INT       = "INT"
 	AT        = "@"

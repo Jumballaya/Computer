@@ -9,6 +9,12 @@ type lexer struct {
 	ch           byte
 }
 
+func (l *lexer) Reset() {
+	l.position = 0
+	l.readPosition = 0
+	l.ch = l.input[0]
+}
+
 func newLexer(input string) *lexer {
 	l := &lexer{input: input}
 	l.readChar()
@@ -24,13 +30,56 @@ func (l *lexer) NextToken() token {
 	case '@':
 		l.readChar()
 		literal := l.readSymbol()
-		tok = token{Type: lookupSymbol(literal), Literal: "@" + literal}
+		tok = token{Type: SYMBOL, Literal: literal}
 	case 'M':
 		tok = newToken(M, string(l.ch))
 	case 'D':
 		tok = newToken(D, string(l.ch))
 	case 'A':
 		tok = newToken(A, string(l.ch))
+	case 'J':
+		peek := l.peekChar()
+		if peek == 'L' {
+			l.readChar()
+			if l.peekChar() == 'T' {
+				l.readChar()
+				tok = token{Type: JLT, Literal: "JLT"}
+			}
+			if l.peekChar() == 'E' {
+				l.readChar()
+				tok = token{Type: JLE, Literal: "JLE"}
+			}
+		}
+		if peek == 'G' {
+			l.readChar()
+			if l.peekChar() == 'T' {
+				l.readChar()
+				tok = token{Type: JGT, Literal: "JGT"}
+			}
+			if l.peekChar() == 'E' {
+				l.readChar()
+				tok = token{Type: JGE, Literal: "JGE"}
+			}
+		}
+		if peek == 'E' {
+			l.readChar()
+			if l.peekChar() == 'Q' {
+				l.readChar()
+				tok = token{Type: JEQ, Literal: "JEQ"}
+			}
+		}
+		if peek == 'N' {
+			if l.peekChar() == 'E' {
+				l.readChar()
+				tok = token{Type: JNE, Literal: "JNE"}
+			}
+		}
+		if peek == 'M' {
+			if l.peekChar() == 'P' {
+				l.readChar()
+				tok = token{Type: JMP, Literal: "JMP"}
+			}
+		}
 	case '=':
 		tok = token{Type: EQUAL, Literal: string(l.ch)}
 	case '-':
@@ -59,13 +108,15 @@ func (l *lexer) NextToken() token {
 			literal := l.readComment(false)
 			tok = token{Type: COMMENT_MULTILINE, Literal: literal}
 		}
+	case '\n':
+		tok = token{Type: NEWLINE, Literal: "\\n"}
 	case 0:
 		tok.Literal = ""
 		tok.Type = EOF
 	default:
 		if isLetter(l.ch) {
 			literal := l.readSymbol()
-			tok = token{Type: lookupSymbol(literal), Literal: literal}
+			tok = token{Type: SYMBOL, Literal: literal}
 		} else if isDigit(l.ch) {
 			tok = token{Type: INT, Literal: string(l.ch)}
 		} else {
@@ -142,6 +193,9 @@ func (l *lexer) readString(initial byte) string {
 }
 
 func (l *lexer) readSymbol() string {
+	if l.ch == '@' {
+		l.readChar()
+	}
 	pos := l.position
 	l.readChar()
 	for isSymbol(l.ch) {
@@ -152,7 +206,7 @@ func (l *lexer) readSymbol() string {
 }
 
 func (l *lexer) skipWhiteSpace() {
-	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
+	for l.ch == ' ' || l.ch == '\t' || l.ch == '\r' {
 		l.readChar()
 	}
 }

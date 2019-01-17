@@ -2,6 +2,7 @@ package assembler
 
 import (
 	"fmt"
+	"strconv"
 )
 
 type symbolTable struct {
@@ -14,13 +15,14 @@ func (st symbolTable) hasSymbol(s string) bool {
 	return seen
 }
 
-func (st *symbolTable) addSymbol(s string) {
+func (st *symbolTable) addSymbol(s string) int {
 	st.symbols[s] = st.nextPointer
 	st.nextPointer += 1
+	return st.nextPointer - 1
 }
 
-func newSymbolTable() symbolTable {
-	st := symbolTable{nextPointer: 16, symbols: make(map[string]int)}
+func newSymbolTable() *symbolTable {
+	st := &symbolTable{nextPointer: 16, symbols: make(map[string]int)}
 
 	st.symbols["SP"] = 0
 	st.symbols["LCL"] = 1
@@ -57,7 +59,7 @@ type parser struct {
 	curToken  token
 	peekToken token
 
-	table symbolTable
+	table *symbolTable
 }
 
 func newParser(l *lexer) *parser {
@@ -74,17 +76,11 @@ func newParser(l *lexer) *parser {
 	return p
 }
 
-func (p *parser) reset() {
-	p.l.position = 0
-	p.l.readPosition = 0
-	p.l.ch = p.l.input[0]
-
-	p.nextToken()
-	p.nextToken()
-}
-
 func (p *parser) setupSymbolTable() {
 	p.table = newSymbolTable()
+	ct := p.curToken
+	lt := p.lastToken
+	pt := p.peekToken
 
 	for !p.curTokenIs(EOF) {
 		if p.curTokenIs(LPAREN) {
@@ -98,43 +94,78 @@ func (p *parser) setupSymbolTable() {
 		p.nextToken()
 	}
 
-	fmt.Printf("%+v\n", p)
-	p.reset()
+	p.l.Reset()
+	p.curToken = ct
+	p.lastToken = lt
+	p.peekToken = pt
+
+	p.nextToken()
+	p.nextToken()
 }
 
-func (p *parser) parseProgram() [][]byte {
-	code := [][]byte{}
+func (p *parser) parseProgram() []int {
+	code := []int{}
 
 	for !p.curTokenIs(EOF) {
 		instruction := p.parseInstruction()
 		if instruction != nil {
-			code = append(code, instruction)
+			code = append(code, instruction[0])
 		}
 		p.nextToken()
+	}
+
+	for _, b := range code {
+		fmt.Println(intToBinary(b))
 	}
 
 	return code
 }
 
-func (p *parser) parseInstruction() []byte {
+func (p *parser) parseInstruction() []int {
 	switch p.curToken.Type {
 	// Comments
 	case COMMENT_SINGLE:
+		return nil
 	case COMMENT_MULTILINE:
 		return nil
 
 	// A instructions
 	case SYMBOL:
-		//return p.parseAInstruction()
-		return []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 1, 0}
+		return p.parseAInstruction()
 
 	// C Instructions
+	case INT:
+		return p.parseCInstruction()
 	case A:
+		return p.parseCInstruction()
 	case M:
+		return p.parseCInstruction()
 	case D:
-		return []byte{1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0}
+		return p.parseCInstruction()
 	}
 	return nil
+}
+
+func (p *parser) parseAInstruction() []int {
+	// Check if the symbol is a number or a label
+	// Return the byte of the address location
+	location, ok := p.table.symbols[p.curToken.Literal]
+	if !ok {
+		location = p.table.addSymbol(p.curToken.Literal)
+	}
+
+	return []int{location}
+}
+
+func (p *parser) parseCInstruction() []int {
+	tokens := []token{}
+	for !p.curTokenIs(NEWLINE) {
+		tokens = append(tokens, p.curToken)
+		p.nextToken()
+	}
+
+	instr := Instruction{tokens: tokens}
+	return []int{instr.Parse()}
 }
 
 func (p *parser) nextToken() {
@@ -169,4 +200,9 @@ func (p *parser) expectPeek(tt tokenType) bool {
 func (p *parser) peekError(tt tokenType) {
 	msg := fmt.Sprintf("expected next token to be %s, got %s instead", tt, p.peekToken.Type)
 	p.errors = append(p.errors, msg)
+}
+
+func intToBinary(i int) string {
+	n := int64(i)
+	return fmt.Sprintf("%016s", strconv.FormatInt(n, 2))
 }
